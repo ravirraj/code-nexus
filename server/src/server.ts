@@ -22,7 +22,15 @@ const isAllowedOrigin = (origin: string | undefined): boolean => {
 	if (!origin) return true
 	if (ALLOWED_ORIGINS.includes(origin)) return true
 	// Same-network devices (e.g. http://192.168.x.x:5173, http://10.x.x.x:5173)
-	return /^http:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/.test(
+	if (
+		/^http:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/.test(
+			origin
+		)
+	)
+		return true
+	// Ephemeral tunnels for sharing without hosting
+	// (e.g. https://xxx.trycloudflare.com, https://xxx.ngrok-free.app)
+	return /^https:\/\/[a-z0-9-]+\.(trycloudflare\.com|cfargotunnel\.com|ngrok-free\.app|ngrok\.io|loca\.lt)$/.test(
 		origin
 	)
 }
