@@ -13,9 +13,23 @@ const app = express()
 
 app.use(express.json())
 
+// Allow local dev, same-network (LAN) testing, and production client
+const ALLOWED_ORIGINS = [
+	"https://code-with-us-client.onrender.com",
+	"http://localhost:5173",
+]
+const isAllowedOrigin = (origin: string | undefined): boolean => {
+	if (!origin) return true
+	if (ALLOWED_ORIGINS.includes(origin)) return true
+	// Same-network devices (e.g. http://192.168.x.x:5173, http://10.x.x.x:5173)
+	return /^http:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/.test(
+		origin
+	)
+}
+
 // Configure CORS
 app.use(cors({
-	origin: ["https://code-with-us-client.onrender.com", "http://localhost:5173"],
+	origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
 	methods: ["GET", "POST", "OPTIONS"],
 	credentials: true,
 	allowedHeaders: ["Content-Type", "Authorization"]
@@ -33,7 +47,7 @@ const server = http.createServer(app)
 // Socket.IO configuration
 const io = new Server(server, {
 	cors: {
-		origin: ["https://code-with-us-client.onrender.com", "http://localhost:5173"],
+		origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
 		methods: ["GET", "POST", "OPTIONS"],
 		credentials: true,
 		allowedHeaders: ["Content-Type", "Authorization"]
@@ -83,6 +97,26 @@ io.on("connection", (socket) => {
 	console.log("Client connected:", socket.id)
 
 	socket.on(SocketEvent.JOIN_REQUEST, ({ roomId, username }) => {
+		// If this socket already joined (e.g. double emit from form + editor),
+		// update its entry instead of pushing a duplicate
+		const existingIndex = userSocketMap.findIndex(
+			(u) => u.socketId === socket.id
+		)
+		if (existingIndex !== -1) {
+			userSocketMap[existingIndex] = {
+				...userSocketMap[existingIndex],
+				username,
+				roomId,
+			}
+			socket.join(roomId)
+			const users = getUsersInRoom(roomId)
+			io.to(socket.id).emit(SocketEvent.JOIN_ACCEPTED, {
+				user: userSocketMap[existingIndex],
+				users,
+			})
+			return
+		}
+
 		// Check is username exist in the room
 		const isUsernameExist = getUsersInRoom(roomId).filter(
 			(u) => u.username === username

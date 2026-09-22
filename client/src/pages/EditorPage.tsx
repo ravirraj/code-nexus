@@ -27,16 +27,18 @@ function EditorPage() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     useEffect(() => {
-        if (currentUser.username.length > 0) return
-        const username = location.state?.username
-        if (username === undefined) {
-            navigate("/", {
-                state: { roomId },
-            })
-        } else if (roomId) {
-            const user: User = { username, roomId }
-            setCurrentUser(user)
-            socket.emit(SocketEvent.JOIN_REQUEST, user)
+        if (roomId) {
+            // Prefer the username passed via navigation state, fall back to context
+            const username = location.state?.username ?? currentUser.username
+            if (username && username.length > 0) {
+                const user: User = { username, roomId }
+                setCurrentUser(user)
+                socket.emit(SocketEvent.JOIN_REQUEST, user)
+            } else {
+                navigate("/", {
+                    state: { roomId },
+                })
+            }
         }
     }, [
         currentUser.username,
