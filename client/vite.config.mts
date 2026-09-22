@@ -38,5 +38,6 @@ export default defineConfig({
         port: 5173,
         strictPort: true, // ensures port 5173 is used, avoids auto-switch
         cors: true, // optional: allows CORS
+        allowedHosts: true, // allow tunnel domains (trycloudflare, ngrok) for sharing
     }
 })
